@@ -90,7 +90,7 @@ public sealed class RenderScene
         };
     }
 
-    private static IReadOnlyList<RenderBatch> BuildBatches(IEnumerable<RenderMesh> meshes) =>
+    private static List<RenderBatch> BuildBatches(IEnumerable<RenderMesh> meshes) =>
         meshes.GroupBy(mesh => new RenderBatchKey(
                 mesh.Mesh,
                 mesh.MaterialId,
@@ -141,7 +141,7 @@ public sealed class RenderScene
 
     private static Dictionary<string, RenderObjectInfo> BuildObjectMap(
         IEnumerable<RenderCandidate> candidates,
-        IReadOnlyDictionary<string, uint> pickIds)
+        Dictionary<string, uint> pickIds)
     {
         var result = new Dictionary<string, RenderObjectInfo>(StringComparer.Ordinal);
         foreach (var candidate in candidates)
@@ -208,7 +208,7 @@ public sealed class RenderScene
         sectionBox is not { Enabled: true } || bounds is null || bounds.Value.Intersects(sectionBox.Bounds);
 
     private static void AccumulateBounds(
-        IDictionary<string, BoundingBox3?> destination,
+        Dictionary<string, BoundingBox3?> destination,
         string objectId,
         BoundingBox3? bounds)
     {
