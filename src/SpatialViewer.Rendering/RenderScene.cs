@@ -7,6 +7,8 @@ public sealed class RenderScene
 {
     public IReadOnlyList<RenderMesh> Meshes { get; init; } = Array.Empty<RenderMesh>();
 
+    public IReadOnlyList<RenderBatch> Batches { get; init; } = Array.Empty<RenderBatch>();
+
     public IReadOnlyList<RenderObjectInfo> Objects { get; init; } = Array.Empty<RenderObjectInfo>();
 
     public IReadOnlyDictionary<uint, RenderObjectInfo> PickMap { get; init; } =
@@ -80,12 +82,35 @@ public sealed class RenderScene
         return new RenderScene
         {
             Meshes = meshes,
+            Batches = BuildBatches(meshes),
             Objects = objects,
             PickMap = pickMap,
             OutlineTargets = outlines,
             SectionBox = options.SectionBox is { Enabled: true } ? options.SectionBox : null,
         };
     }
+
+    private static IReadOnlyList<RenderBatch> BuildBatches(IEnumerable<RenderMesh> meshes) =>
+        meshes.GroupBy(mesh => new RenderBatchKey(
+                mesh.Mesh,
+                mesh.MaterialId,
+                mesh.IsMaterialFallback,
+                mesh.Opacity,
+                mesh.FlipWinding))
+            .Select(group => new RenderBatch(
+                group.Key.Mesh,
+                group.Key.MaterialId,
+                group.Key.IsMaterialFallback,
+                group.Key.Opacity,
+                group.Key.FlipWinding,
+                group.Select(mesh => new RenderInstance(
+                        mesh.NodeId,
+                        mesh.ObjectId,
+                        mesh.PickId,
+                        mesh.Transform,
+                        mesh.Bounds))
+                    .ToList()))
+            .ToList();
 
     private static void CollectCandidates(
         SceneNode node,
@@ -214,4 +239,11 @@ public sealed class RenderScene
         SceneNode? Storey,
         MeshData Mesh,
         string ObjectId);
+
+    private sealed record RenderBatchKey(
+        MeshData Mesh,
+        string MaterialId,
+        bool IsMaterialFallback,
+        float Opacity,
+        bool FlipWinding);
 }
