@@ -16,11 +16,11 @@ public sealed class IfcSemanticLoadingTests
             var result = await reader.OpenAsync(path);
 
             Assert.Equal(IfcSchemaVersion.Ifc4, result.Schema);
-            var project = Assert.Single(result.Document.Root.Children.Where(node => node.Category == "IfcProject"));
-            var site = Assert.Single(project.Children.Where(node => node.Category == "IfcSite"));
-            var building = Assert.Single(site.Children.Where(node => node.Category == "IfcBuilding"));
-            var storey = Assert.Single(building.Children.Where(node => node.Category == "IfcBuildingStorey"));
-            var wall = Assert.Single(storey.Children.Where(node => node.Category == "IfcWall"));
+            var project = Assert.Single(result.Document.Root.Children, node => node.Category == "IfcProject");
+            var site = Assert.Single(project.Children, node => node.Category == "IfcSite");
+            var building = Assert.Single(site.Children, node => node.Category == "IfcBuilding");
+            var storey = Assert.Single(building.Children, node => node.Category == "IfcBuildingStorey");
+            var wall = Assert.Single(storey.Children, node => node.Category == "IfcWall");
 
             Assert.Equal("Wall 01", wall.Name);
             Assert.Contains(wall.Properties.Values, property => IsProperty(property, "GlobalId", "3hW0Q0YqP0k8oT7M2h4abc"));
