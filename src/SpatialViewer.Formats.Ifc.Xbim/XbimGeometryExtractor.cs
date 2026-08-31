@@ -65,21 +65,11 @@ internal static class XbimGeometryExtractor
             return;
         }
 
-        var worldBounds = ToBounds(instances[0].BoundingBox, scale);
-        for (var index = 1; index < instances.Count; index++)
-        {
-            worldBounds = worldBounds.Union(ToBounds(instances[index].BoundingBox, scale));
-        }
-
-        var origin = SelectWorldOrigin(worldBounds, options);
-        document.WorldBounds = worldBounds;
-        document.WorldOrigin = origin;
-        document.Bounds = worldBounds.Translate(-origin);
-
         var nodeByLabel = new Dictionary<int, SceneNode>();
         IndexSemanticNodes(document.Root, nodeByLabel);
         var meshCache = new Dictionary<(int Geometry, int Style), MeshData>();
-        var instanceCount = 0;
+        var pending = new List<PendingGeometry>();
+        BoundingBox3? worldBounds = null;
         var triangleCount = 0;
 
         Report(options, IfcLoadStage.ExtractingGeometry, 0, "Extracting triangle meshes");
@@ -109,33 +99,12 @@ internal static class XbimGeometryExtractor
                     transformation = XbimMatrix3D.CreateTranslation(displacement) * transformation;
                 }
 
-                var matrix = ToMatrix(transformation, scale, origin);
-                var geometryNode = new SceneNode(
-                    $"ifc-geometry:{instance.IfcProductLabel.ToString(CultureInfo.InvariantCulture)}:{instance.InstanceLabel.ToString(CultureInfo.InvariantCulture)}")
-                {
-                    SourceId = productNode.SourceId,
-                    Name = productNode.Name,
-                    Category = "IFC.Geometry",
-                    Transform = matrix,
-                    FlipWinding = matrix.GetDeterminant() < 0f,
-                    Bounds = ToBounds(instance.BoundingBox, scale).Translate(-origin),
-                };
-                geometryNode.Meshes.Add(mesh);
-                geometryNode.Properties["IFC.Geometry.ShapeGeometryLabel"] = new SceneProperty(
-                    "ShapeGeometryLabel",
-                    instance.ShapeGeometryLabel.ToString(CultureInfo.InvariantCulture),
-                    null,
-                    "IFC.Geometry");
-                geometryNode.Properties["IFC.Geometry.StyleLabel"] = new SceneProperty(
-                    "StyleLabel",
-                    instance.StyleLabel.ToString(CultureInfo.InvariantCulture),
-                    null,
-                    "IFC.Geometry");
-                productNode.Children.Add(geometryNode);
-                productNode.Bounds = productNode.Bounds is { } existing
-                    ? existing.Union(geometryNode.Bounds.Value)
-                    : geometryNode.Bounds;
-                instanceCount++;
+                var worldTransform = ToMatrix(transformation, scale, Vector3.Zero);
+                var instanceWorldBounds = TransformBounds(mesh.Bounds, worldTransform);
+                worldBounds = worldBounds is { } existing
+                    ? existing.Union(instanceWorldBounds)
+                    : instanceWorldBounds;
+                pending.Add(new PendingGeometry(productNode, instance, mesh, worldTransform, instanceWorldBounds));
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -152,8 +121,52 @@ internal static class XbimGeometryExtractor
                 $"Extracting geometry {index + 1}/{instances.Count}");
         }
 
+        if (pending.Count == 0 || worldBounds is null)
+        {
+            diagnostics.Add(new IfcLoadDiagnostic(
+                IfcDiagnosticSeverity.Warning,
+                "IFC_GEOMETRY_EMPTY",
+                "No usable triangle meshes were extracted from the geometry store."));
+            return;
+        }
+
+        var origin = SelectWorldOrigin(worldBounds.Value, options);
+        document.WorldBounds = worldBounds;
+        document.WorldOrigin = origin;
+        document.Bounds = worldBounds.Value.Translate(-origin);
+
+        foreach (var item in pending)
+        {
+            var rebasedTransform = ApplyWorldOrigin(item.WorldTransform, origin);
+            var geometryNode = new SceneNode(
+                $"ifc-geometry:{item.Instance.IfcProductLabel.ToString(CultureInfo.InvariantCulture)}:{item.Instance.InstanceLabel.ToString(CultureInfo.InvariantCulture)}")
+            {
+                SourceId = item.ProductNode.SourceId,
+                Name = item.ProductNode.Name,
+                Category = "IFC.Geometry",
+                Transform = rebasedTransform,
+                FlipWinding = rebasedTransform.GetDeterminant() < 0f,
+                Bounds = item.WorldBounds.Translate(-origin),
+            };
+            geometryNode.Meshes.Add(item.Mesh);
+            geometryNode.Properties["IFC.Geometry.ShapeGeometryLabel"] = new SceneProperty(
+                "ShapeGeometryLabel",
+                item.Instance.ShapeGeometryLabel.ToString(CultureInfo.InvariantCulture),
+                null,
+                "IFC.Geometry");
+            geometryNode.Properties["IFC.Geometry.StyleLabel"] = new SceneProperty(
+                "StyleLabel",
+                item.Instance.StyleLabel.ToString(CultureInfo.InvariantCulture),
+                null,
+                "IFC.Geometry");
+            item.ProductNode.Children.Add(geometryNode);
+            item.ProductNode.Bounds = item.ProductNode.Bounds is { } existing
+                ? existing.Union(geometryNode.Bounds.Value)
+                : geometryNode.Bounds;
+        }
+
         document.Metadata["Geometry.Unit"] = "metre";
-        document.Metadata["Geometry.InstanceCount"] = instanceCount.ToString(CultureInfo.InvariantCulture);
+        document.Metadata["Geometry.InstanceCount"] = pending.Count.ToString(CultureInfo.InvariantCulture);
         document.Metadata["Geometry.UniqueMeshCount"] = meshCache.Count.ToString(CultureInfo.InvariantCulture);
         document.Metadata["Geometry.TriangleCount"] = triangleCount.ToString(CultureInfo.InvariantCulture);
         document.Metadata["Geometry.WorldOrigin"] = FormatVector(origin);
@@ -206,13 +219,37 @@ internal static class XbimGeometryExtractor
             (float)(matrix.OffsetZ * scale) - origin.Z,
             (float)matrix.M44);
 
-    private static BoundingBox3 ToBounds(XbimRect3D bounds, double scale) =>
-        new(
-            new Vector3((float)(bounds.X * scale), (float)(bounds.Y * scale), (float)(bounds.Z * scale)),
-            new Vector3(
-                (float)((bounds.X + bounds.SizeX) * scale),
-                (float)((bounds.Y + bounds.SizeY) * scale),
-                (float)((bounds.Z + bounds.SizeZ) * scale)));
+    private static Matrix4x4 ApplyWorldOrigin(Matrix4x4 matrix, Vector3 origin)
+    {
+        matrix.M41 -= origin.X;
+        matrix.M42 -= origin.Y;
+        matrix.M43 -= origin.Z;
+        return matrix;
+    }
+
+    private static BoundingBox3 TransformBounds(BoundingBox3 bounds, Matrix4x4 transform)
+    {
+        var min = bounds.Min;
+        var max = bounds.Max;
+        var corners = new Vector3[]
+        {
+            new(min.X, min.Y, min.Z),
+            new(max.X, min.Y, min.Z),
+            new(min.X, max.Y, min.Z),
+            new(max.X, max.Y, min.Z),
+            new(min.X, min.Y, max.Z),
+            new(max.X, min.Y, max.Z),
+            new(min.X, max.Y, max.Z),
+            new(max.X, max.Y, max.Z),
+        };
+
+        for (var index = 0; index < corners.Length; index++)
+        {
+            corners[index] = Vector3.Transform(corners[index], transform);
+        }
+
+        return BoundingBox3.FromPoints(corners);
+    }
 
     private static Vector3 SelectWorldOrigin(BoundingBox3 bounds, IfcOpenOptions options)
     {
@@ -250,4 +287,11 @@ internal static class XbimGeometryExtractor
 
     private static void Report(IfcOpenOptions options, IfcLoadStage stage, int percent, string message) =>
         options.Progress?.Report(new IfcLoadProgress(stage, percent, message));
+
+    private sealed record PendingGeometry(
+        SceneNode ProductNode,
+        XbimShapeInstance Instance,
+        MeshData Mesh,
+        Matrix4x4 WorldTransform,
+        BoundingBox3 WorldBounds);
 }
