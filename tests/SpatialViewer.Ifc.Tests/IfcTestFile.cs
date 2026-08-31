@@ -1,21 +1,26 @@
+using System.IO.Compression;
+
 namespace SpatialViewer.Formats.Ifc.Tests;
 
 internal static class IfcTestFile
 {
-    public static string WriteHeaderOnly(string schema)
+    public static string WriteHeaderOnly(string schema) => Write(CreateHeaderOnly(schema));
+
+    public static string WriteHeaderOnlyIfcZip(string schema)
     {
-        var content = $$"""
-            ISO-10303-21;
-            HEADER;
-            FILE_DESCRIPTION(('SpatialViewer.IFCCore schema fixture'),'2;1');
-            FILE_NAME('schema.ifc','2026-08-31T00:00:00',('SpatialViewer'),('SpatialViewer'),'SpatialViewer.IFCCore','SpatialViewer.IFCCore','');
-            FILE_SCHEMA(('{{schema}}'));
-            ENDSEC;
-            DATA;
-            ENDSEC;
-            END-ISO-10303-21;
-            """;
-        return Write(content);
+        var ifcPath = WriteHeaderOnly(schema);
+        var zipPath = Path.ChangeExtension(ifcPath, ".ifczip");
+        try
+        {
+            using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+            archive.CreateEntryFromFile(ifcPath, "model.ifc", CompressionLevel.Fastest);
+        }
+        finally
+        {
+            File.Delete(ifcPath);
+        }
+
+        return zipPath;
     }
 
     public static string WriteSemanticIfc4()
@@ -66,6 +71,18 @@ internal static class IfcTestFile
             """;
         return Write(content);
     }
+
+    private static string CreateHeaderOnly(string schema) => $$"""
+        ISO-10303-21;
+        HEADER;
+        FILE_DESCRIPTION(('SpatialViewer.IFCCore schema fixture'),'2;1');
+        FILE_NAME('schema.ifc','2026-08-31T00:00:00',('SpatialViewer'),('SpatialViewer'),'SpatialViewer.IFCCore','SpatialViewer.IFCCore','');
+        FILE_SCHEMA(('{{schema}}'));
+        ENDSEC;
+        DATA;
+        ENDSEC;
+        END-ISO-10303-21;
+        """;
 
     private static string Write(string content)
     {

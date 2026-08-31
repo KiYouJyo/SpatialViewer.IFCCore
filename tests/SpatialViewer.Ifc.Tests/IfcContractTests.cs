@@ -27,6 +27,24 @@ public sealed class IfcContractTests
     }
 
     [Fact]
+    public async Task ReaderLoadsIfcZipContainer()
+    {
+        var path = IfcTestFile.WriteHeaderOnlyIfcZip("IFC4");
+        try
+        {
+            var reader = new XbimIfcModelReader();
+            var result = await reader.OpenAsync(path);
+
+            Assert.Equal(IfcSchemaVersion.Ifc4, result.Schema);
+            Assert.Equal("IFC", result.Document.Metadata["Format"]);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task ReaderHonorsPreCancelledToken()
     {
         var path = IfcTestFile.WriteHeaderOnly("IFC4");
@@ -64,5 +82,31 @@ public sealed class IfcContractTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public async Task ReaderReportsStructuredProgressThroughCompletion()
+    {
+        var path = IfcTestFile.WriteHeaderOnly("IFC4");
+        try
+        {
+            var progress = new RecordingProgress();
+            var reader = new XbimIfcModelReader();
+            await reader.OpenAsync(path, new IfcOpenOptions { Progress = progress });
+
+            Assert.Contains(progress.Events, item => item.Stage == IfcLoadStage.Opening);
+            Assert.Contains(progress.Events, item => item.Stage == IfcLoadStage.Completed && item.Percent == 100);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    private sealed class RecordingProgress : IProgress<IfcLoadProgress>
+    {
+        public IList<IfcLoadProgress> Events { get; } = new List<IfcLoadProgress>();
+
+        public void Report(IfcLoadProgress value) => Events.Add(value);
     }
 }

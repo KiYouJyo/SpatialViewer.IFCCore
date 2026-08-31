@@ -6,11 +6,20 @@ SpatialViewer.IFCCore is the BIM/IFC viewing kernel for SpatialViewer. It owns I
 
 ## Scope
 
-- Primary input: IFC STEP (`.ifc`), with IFCZIP / IFCXML planned.
-- Target schemas: IFC2x3, IFC4 and IFC4.3.
-- Preferred .NET adapter: xBIM, isolated behind `SpatialViewer.Formats.Ifc.Xbim`.
+- Primary inputs: IFC STEP (`.ifc`) and IFCZIP (`.ifczip`); IFCXML is planned.
+- Supported schemas in 0.2.x: IFC2x3, IFC4 and IFC4.3.
+- IFC adapter: `Xbim.Essentials`, isolated behind `SpatialViewer.Formats.Ifc.Xbim`.
 - `.rvt` is not parsed by the portable core. Revit-origin models are integrated through a Revit API exporter, Autodesk Platform Services, or an optional licensed SDK adapter.
-- Output is a renderer-agnostic `SceneDocument` plus BIM semantics and mesh data.
+- Output is a renderer-agnostic `SceneDocument` with BIM semantics and later geometry data.
+
+## 0.2.0 capabilities
+
+- Real IFC STEP / IFCZIP opening and schema detection.
+- Project → Site → Building → Storey → Element hierarchy.
+- GlobalId, entity identity, occurrence/type and containment metadata.
+- Property sets, quantities, classifications and basic materials.
+- Cancellation, staged progress, structured diagnostics and elapsed timing.
+- Geometry tessellation is intentionally deferred to 0.3.x.
 
 See [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

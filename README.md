@@ -6,11 +6,21 @@ SpatialViewer 的 BIM / IFC 读图内核。仓库负责 IFC 模型解析、BIM �
 
 ## 定位
 
-- 主输入：IFC STEP (`.ifc`)，后续兼容 IFCZIP / IFCXML。
-- 目标 schema：IFC2x3、IFC4、IFC4.3。
-- 首选 .NET 适配器：xBIM，隔离在 `SpatialViewer.Formats.Ifc.Xbim`。
+- 主输入：IFC STEP (`.ifc`) 与 IFCZIP (`.ifczip`)；IFCXML 后续兼容。
+- 当前支持的 schema：IFC2x3、IFC4、IFC4.3。
+- IFC 适配器：`Xbim.Essentials`，隔离在 `SpatialViewer.Formats.Ifc.Xbim`。
 - `.rvt`：不在核心层直接解析。Revit 来源文件通过 Revit API 导出、Autodesk Platform Services 或独立商业 SDK 适配接入。
-- 输出：与 UI、具体渲染后端解耦的 `SceneDocument` / BIM 语义与网格数据。
+- 输出：与 UI、具体渲染后端解耦的 `SceneDocument` / BIM 语义与后续网格数据。
+
+## 0.2.0 当前能力
+
+- 实际打开 IFC STEP / IFCZIP，而不是占位接口。
+- 自动识别 IFC2x3 / IFC4 / IFC4.3。
+- 构建 Project → Site → Building → Storey → Element 空间树。
+- 提取 GlobalId、实体类型/标签、名称、空间归属、Occurrence/Type 信息。
+- 提取 Property Set、Quantity、Classification 与基础 Material。
+- 提供取消、分阶段进度、结构化诊断和加载耗时。
+- 几何三角化明确留在 0.3.x，不在 0.2.x 混入 Geometry 依赖。
 
 ## 仓库结构
 
@@ -32,10 +42,6 @@ docs/
   DEVELOPMENT_PLAN.md
   REVIT_INTEGRATION.md
 ```
-
-## 开发状态
-
-当前为 `0.1.0` 仓库基础阶段。具体里程碑见 [开发计划](docs/DEVELOPMENT_PLAN.md)。
 
 ## 构建
 
