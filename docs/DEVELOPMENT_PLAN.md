@@ -11,7 +11,7 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 - Define fixture metadata and compatibility matrix.
 - Acceptance: solution restores, builds Debug + Release, tests run on CI, no proprietary dependency in Core.
 
-## Phase 1 — IFC document loading (0.2.x) — Implemented
+## Phase 1 — IFC document loading (0.2.x) — Complete
 
 - `Xbim.Essentials` is pinned inside `SpatialViewer.Formats.Ifc.Xbim` only.
 - Load STEP and IFCZIP; detect IFC2x3 / IFC4 / IFC4.3.
@@ -20,16 +20,25 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 - Extract property sets, quantities, classifications and basic materials.
 - Provide cancellation checks, staged progress and structured diagnostics.
 - Automated fixtures validate schemas, IFCZIP, semantic hierarchy and common metadata without product UI code.
-- Ongoing hardening: expand the redistributable corpus with representative Revit-exported IFC fixtures and malformed-input cases.
 
-## Phase 2 — Geometry pipeline (0.3.x)
+## Phase 2 — Geometry pipeline (0.3.x) — Implemented
 
-- Generate triangulated geometry and per-instance transforms.
-- Normalize units to metres and handle mapped items / repeated families efficiently.
-- Preserve normals, triangle indices, material slots and world/local bounds.
-- Introduce local-origin rebasing for large coordinates.
-- Handle openings, voids, negative transforms and mirrored instances.
-- Acceptance: walls, slabs, roofs, doors, windows, stairs, railings, MEP proxies and repeated families render with correct placement and scale.
+- `Xbim.Geometry` is isolated inside `SpatialViewer.Formats.Ifc.Xbim`; Core remains free of xBIM/OpenCascade types.
+- Generate real triangulated geometry with positions, normals and triangle indices.
+- Normalize source length units to metres.
+- Preserve per-instance transforms and local shape displacement.
+- Deduplicate repeated/mapped shapes into shared `MeshData` with separate instance nodes.
+- Preserve surface-style slots for later material resolution.
+- Compute local mesh bounds, transformed world bounds and document bounds.
+- Rebase large world coordinates to a local scene origin while preserving original world bounds.
+- Preserve mirrored/negative transforms with an explicit winding-flip flag.
+- Use xBIM's opening/void boolean results for host elements; optionally expose opening-element geometry.
+- Propagate geometry flags and bounds through the renderer-neutral scene contract.
+- Generated IFC4 fixtures verify solid tessellation, repeated geometry, mapped mirrors, styles, openings and large coordinates through the real xBIM/OpenCascade runtime.
+
+### 0.3 acceptance boundary
+
+The geometry pipeline is representation-driven rather than category-specific: walls, slabs, roofs, doors, windows, stairs, railings and MEP products that expose supported IFC body representations use the same extraction path. The portable release gate therefore verifies the underlying representation mechanisms. A growing set of representative Revit-origin exports remains a fidelity-hardening corpus for exporter/category-specific regressions.
 
 ## Phase 3 — BIM rendering semantics (0.4.x)
 
@@ -42,7 +51,7 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 ## Phase 4 — Performance and cache (0.5.x)
 
 - Background loading pipeline with cancellation and progress stages.
-- Deduplicate repeated meshes and introduce geometry/material caches.
+- Deduplicate repeated meshes and introduce geometry/material caches beyond one load operation.
 - Define optional on-disk SpatialViewer BIM cache with source fingerprint and schema/version stamp.
 - Benchmark cold open, warm open, peak memory and GPU upload separately.
 - Acceptance targets for reference models: deterministic output, bounded peak memory, cancellable load and materially faster warm-open path.
@@ -60,9 +69,10 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 - Large coordinate models, linked models and federated datasets.
 - Complex swept solids, advanced BReps and tessellated geometry.
 - Material/texturing edge cases and Revit exporter variations.
+- Category/discipline corpus: walls, slabs, roofs, doors, windows, stairs, railings, families and MEP content from redistributable real exports.
 - Corrupt/malicious IFC resilience and resource limits.
 - Build a golden fixture suite with image/geometry/semantic regression metrics.
 
 ## Release gate
 
-A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness once geometry exists, performance regression, malformed-input safety and license review.
+A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness, deterministic transforms/bounds, performance regression when applicable, malformed-input safety and license review.

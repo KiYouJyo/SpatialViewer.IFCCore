@@ -2,5 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="..\SpatialViewer.Formats.Ifc\SpatialViewer.Formats.Ifc.csproj" />
     <PackageReference Include="Xbim.Essentials" Version="6.1.605" />
+    <PackageReference Include="Xbim.Geometry" Version="6.3.891-netcore" />
   </ItemGroup>
 </Project>

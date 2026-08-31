@@ -19,7 +19,7 @@ public sealed class RenderScene
     {
         foreach (var mesh in node.Meshes)
         {
-            output.Add(new RenderMesh(node.Id, mesh, node.Transform));
+            output.Add(new RenderMesh(node.Id, mesh, node.Transform, node.FlipWinding, node.Bounds));
         }
 
         foreach (var child in node.Children)
