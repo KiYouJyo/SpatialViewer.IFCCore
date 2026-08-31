@@ -105,7 +105,7 @@ public sealed class IfcContractTests
 
     private sealed class RecordingProgress : IProgress<IfcLoadProgress>
     {
-        public IList<IfcLoadProgress> Events { get; } = new List<IfcLoadProgress>();
+        public List<IfcLoadProgress> Events { get; } = [];
 
         public void Report(IfcLoadProgress value) => Events.Add(value);
     }
