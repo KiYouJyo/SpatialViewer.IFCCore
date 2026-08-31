@@ -94,7 +94,10 @@ public sealed class CachedIfcModelReader : IIfcModelReader
         }
 
         Interlocked.Increment(ref _misses);
-        var coldResult = await _inner.OpenAsync(path, options, cancellationToken).ConfigureAwait(false);
+        var innerOptions = options.Progress is null
+            ? options
+            : options with { Progress = new CacheProgressProxy(options.Progress) };
+        var coldResult = await _inner.OpenAsync(path, innerOptions, cancellationToken).ConfigureAwait(false);
         var storedEntry = new IfcCachedEntry(coldResult.Document, coldResult.Schema, coldResult.Diagnostics);
         AddMemory(cacheKey, storedEntry);
 
@@ -227,4 +230,15 @@ public sealed class CachedIfcModelReader : IIfcModelReader
         options.Progress?.Report(new IfcLoadProgress(stage, percent, message));
 
     private sealed record MemoryCacheItem(string Key, IfcCachedEntry Entry);
+
+    private sealed class CacheProgressProxy(IProgress<IfcLoadProgress> target) : IProgress<IfcLoadProgress>
+    {
+        public void Report(IfcLoadProgress value)
+        {
+            if (value.Stage != IfcLoadStage.Completed)
+            {
+                target.Report(value);
+            }
+        }
+    }
 }

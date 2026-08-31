@@ -29,10 +29,7 @@ public static class RenderPerformanceMetrics
         int iterations = 10)
     {
         ArgumentNullException.ThrowIfNull(index);
-        if (iterations <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(iterations));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(iterations);
 
         _ = index.Build(options);
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
