@@ -2,7 +2,7 @@
 
 [中文](README.md) | [English](README.en.md)
 
-SpatialViewer.IFCCore は SpatialViewer の BIM / IFC 読み込みコアです。IFC 解析、BIM 階層・属性、実ジオメトリの三角形化、レンダリング用シーン生成、および Revit 由来モデルの接続境界を担当し、WinUI 3 の製品 UI は含みません。
+SpatialViewer.IFCCore は SpatialViewer の BIM / IFC 読み込みコアです。IFC 解析、BIM 階層・属性、実ジオメトリの三角形化、renderer-neutral な操作・描画セマンティクス、および Revit 由来モデルの接続境界を担当し、WinUI 3 の製品 UI は含みません。
 
 ## 対象
 
@@ -11,19 +11,20 @@ SpatialViewer.IFCCore は SpatialViewer の BIM / IFC 読み込みコアです�
 - セマンティクス：`Xbim.Essentials 6.1.605`。
 - ジオメトリ：`Xbim.Geometry 6.3.891-netcore` とその OpenCascade ランタイム。
 - xBIM / OpenCascade 型は `SpatialViewer.Formats.Ifc.Xbim` 内に隔離し、Core や UI 契約には公開しません。
-- `.rvt` をポータブル Core で逆解析・直接解析しません。IFC、Revit API exporter/sidecar、Autodesk Platform Services、または任意の商用 SDK adapter を経由します。
+- `.rvt` を portable Core で逆解析・直接解析しません。IFC、Revit API exporter/sidecar、Autodesk Platform Services、または任意の商用 SDK adapter を経由します。
 
-## 0.3.0 の機能
+## 0.4.0 の機能
 
-- IFC STEP / IFCZIP の実読み込みと IFC2x3 / IFC4 / IFC4.3 の判定。
-- Project → Site → Building → Storey → Element 階層と BIM メタデータの抽出。
-- `IncludeGeometry=true` で xBIM/OpenCascade による実際の三角形メッシュを生成。
-- Position、Normal、Triangle Index、renderer-neutral な Style/Material slot を保持。
-- メートル単位への正規化、元の world bounds 保持、大座標に対する local-origin rebasing。
-- repeated / mapped geometry の `MeshData` 共有と instance transform の分離。
-- mirrored / negative transform を `FlipWinding` として保持。
-- Opening/Void を host geometry の boolean に反映し、必要時のみ opening geometry を保持可能。
-- キャンセル、段階別進捗、構造化診断、読み込み時間を提供。
+- 0.2/0.3 の IFC セマンティクス、Property、実三角形ジオメトリ機能を維持。
+- 読み込み済み `SceneDocument` から IFC の再解析なしで `RenderScene` を生成。
+- Stable ObjectId と deterministic `uint PickId`。Hide/Isolate などの表示変更でも未変更オブジェクトの PickId は維持。
+- PickMap から名前、カテゴリ、階、`SceneProperty` snapshot を直接取得可能。
+- Object / Category / Storey の Hide と Object Isolate。
+- Global / Category / Object の opacity override と renderer-neutral fallback material key。
+- Section Box contract：完全に box 外の object は粗い bounds culling、交差 object は backend/GPU の精密 clipping 用に保持。
+- Object-ID/depth outline と選択ハイライト用の per-object outline target。
+- Shared Mesh + Material + Opacity + Winding を単位とした instanced `RenderBatch`。
+- Perspective / Orthographic、Orbit、Pan、Zoom、View/Projection matrix を持つ platform-neutral `RenderCamera`。
 
 詳細は [開発計画](docs/DEVELOPMENT_PLAN.md)、[互換性](docs/COMPATIBILITY.md)、[アーキテクチャ](docs/ARCHITECTURE.md) を参照してください。
 

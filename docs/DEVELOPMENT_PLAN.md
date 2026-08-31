@@ -21,7 +21,7 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 - Provide cancellation checks, staged progress and structured diagnostics.
 - Automated fixtures validate schemas, IFCZIP, semantic hierarchy and common metadata without product UI code.
 
-## Phase 2 — Geometry pipeline (0.3.x) — Implemented
+## Phase 2 — Geometry pipeline (0.3.x) — Complete
 
 - `Xbim.Geometry` is isolated inside `SpatialViewer.Formats.Ifc.Xbim`; Core remains free of xBIM/OpenCascade types.
 - Generate real triangulated geometry with positions, normals and triangle indices.
@@ -40,21 +40,30 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 
 The geometry pipeline is representation-driven rather than category-specific: walls, slabs, roofs, doors, windows, stairs, railings and MEP products that expose supported IFC body representations use the same extraction path. The portable release gate therefore verifies the underlying representation mechanisms. A growing set of representative Revit-origin exports remains a fidelity-hardening corpus for exporter/category-specific regressions.
 
-## Phase 3 — BIM rendering semantics (0.4.x)
+## Phase 3 — BIM rendering semantics (0.4.x) — Implemented
 
-- Convert Core scene to renderer-friendly batches.
-- Stable object IDs for hit testing and property selection.
-- Category / storey visibility filters, isolate/hide, transparency and section clipping contracts.
-- Edge/outline data and material fallbacks.
-- Acceptance: scene output supports orbit/pan/zoom, selection, hide/isolate and section-box workflows without reparsing IFC.
+- Convert Core geometry into renderer-friendly `RenderMesh` and instanced `RenderBatch` output.
+- Generate stable ObjectId and deterministic `uint PickId` before view-state filtering, so hide/isolate does not renumber unaffected objects.
+- Map PickId directly to source identity, name, category, storey and `SceneProperty` snapshots for property selection.
+- Apply object/category/storey hide and object isolate without modifying or reparsing `SceneDocument`.
+- Apply global/category/object opacity overrides and renderer-neutral category material fallbacks.
+- Carry Section Box state; cull fully outside bounds while retaining intersecting geometry for backend/GPU precise clipping.
+- Expose per-object outline targets for object-ID/depth outlines and selection highlighting.
+- Batch shared Mesh/Material/Opacity/Winding state while preserving per-instance transform, bounds and PickId.
+- Provide platform-neutral perspective/orthographic camera contracts with orbit, pan, zoom and view/projection matrices.
+
+### 0.4 acceptance boundary
+
+Interactive view state is downstream of IFC parsing. A loaded `SceneDocument` can be reused for camera navigation, selection, hide/isolate, transparency and section-box changes. 0.4 verifies the contracts and deterministic scene transformations; concrete Direct3D/WinUI drawing remains the responsibility of `SpatialViewer.Rendering.Windows` and the product UI.
 
 ## Phase 4 — Performance and cache (0.5.x)
 
 - Background loading pipeline with cancellation and progress stages.
 - Deduplicate repeated meshes and introduce geometry/material caches beyond one load operation.
 - Define optional on-disk SpatialViewer BIM cache with source fingerprint and schema/version stamp.
-- Benchmark cold open, warm open, peak memory and GPU upload separately.
-- Acceptance targets for reference models: deterministic output, bounded peak memory, cancellable load and materially faster warm-open path.
+- Benchmark cold open, warm open, RenderScene rebuild, peak memory and GPU upload separately.
+- Add dependency/CI caching where it materially reduces the native geometry restore path.
+- Acceptance targets for reference models: deterministic output, bounded peak memory, cancellable load and materially faster warm-open/view-state rebuild paths.
 
 ## Phase 5 — Revit-source adapters (0.6.x+)
 
@@ -75,4 +84,4 @@ The geometry pipeline is representation-driven rather than category-specific: wa
 
 ## Release gate
 
-A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness, deterministic transforms/bounds, performance regression when applicable, malformed-input safety and license review.
+A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness, deterministic transforms/bounds, rendering-semantic determinism, performance regression when applicable, malformed-input safety and license review.

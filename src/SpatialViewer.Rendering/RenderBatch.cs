@@ -3,14 +3,17 @@ using SpatialViewer.Core.Geometry;
 
 namespace SpatialViewer.Rendering;
 
-public sealed record RenderMesh(
+public sealed record RenderInstance(
     string NodeId,
     string ObjectId,
     uint PickId,
-    MeshData Mesh,
     Matrix4x4 Transform,
-    bool FlipWinding,
-    BoundingBox3? Bounds,
+    BoundingBox3? Bounds);
+
+public sealed record RenderBatch(
+    MeshData Mesh,
     string MaterialId,
     bool IsMaterialFallback,
-    float Opacity);
+    float Opacity,
+    bool FlipWinding,
+    IReadOnlyList<RenderInstance> Instances);
