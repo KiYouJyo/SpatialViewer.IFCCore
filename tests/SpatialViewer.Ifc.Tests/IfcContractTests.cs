@@ -1,4 +1,3 @@
-using SpatialViewer.Formats.Ifc;
 using SpatialViewer.Formats.Ifc.Xbim;
 using Xunit;
 
@@ -6,25 +5,62 @@ namespace SpatialViewer.Formats.Ifc.Tests;
 
 public sealed class IfcContractTests
 {
-    [Fact]
-    public async Task FoundationAdapterFailsExplicitlyUntilXbimIsIntegrated()
+    [Theory]
+    [InlineData("IFC2X3", IfcSchemaVersion.Ifc2X3)]
+    [InlineData("IFC4", IfcSchemaVersion.Ifc4)]
+    [InlineData("IFC4X3_ADD2", IfcSchemaVersion.Ifc4X3)]
+    public async Task ReaderDetectsSupportedSchemas(string schemaHeader, IfcSchemaVersion expected)
     {
-        var reader = new XbimIfcModelReader();
-
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+        var path = IfcTestFile.WriteHeaderOnly(schemaHeader);
+        try
         {
-            await reader.OpenAsync("sample.ifc");
-        });
+            var reader = new XbimIfcModelReader();
+            var result = await reader.OpenAsync(path);
 
-        Assert.Contains("Phase 1", exception.Message, StringComparison.Ordinal);
+            Assert.Equal(expected, result.SchemaVersion);
+            Assert.Equal(expected.ToString(), result.Document.Metadata["Schema"]);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
-    [Theory]
-    [InlineData(IfcSchemaVersion.Ifc2X3)]
-    [InlineData(IfcSchemaVersion.Ifc4)]
-    [InlineData(IfcSchemaVersion.Ifc4X3)]
-    public void TargetSchemaValuesAreExplicit(IfcSchemaVersion schema)
+    [Fact]
+    public async Task ReaderHonorsPreCancelledToken()
     {
-        Assert.NotEqual(IfcSchemaVersion.Unknown, schema);
+        var path = IfcTestFile.WriteHeaderOnly("IFC4");
+        try
+        {
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            var reader = new XbimIfcModelReader();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+            {
+                await reader.OpenAsync(path, cancellationToken: cancellation.Token);
+            });
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ReaderReportsGeometryDeferralWithoutFailingSemanticLoad()
+    {
+        var path = IfcTestFile.WriteHeaderOnly("IFC4");
+        try
+        {
+            var reader = new XbimIfcModelReader();
+            var result = await reader.OpenAsync(path, new IfcOpenOptions { IncludeGeometry = true });
+
+            Assert.Contains(result.Diagnostics, item => item.Code == "IFC_GEOMETRY_DEFERRED" && !item.IsError);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 }
