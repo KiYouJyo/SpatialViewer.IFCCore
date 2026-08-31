@@ -163,7 +163,8 @@ public sealed class RenderScene
                     owner.Name,
                     owner.Category,
                     storey is null ? null : GetStableId(storey),
-                    storey?.Name));
+                    storey?.Name,
+                    new Dictionary<string, SceneProperty>(owner.Properties, StringComparer.Ordinal)));
         }
 
         return result;

@@ -1,3 +1,5 @@
+using SpatialViewer.Core;
+
 namespace SpatialViewer.Rendering;
 
 public sealed record RenderObjectInfo(
@@ -8,4 +10,5 @@ public sealed record RenderObjectInfo(
     string? Name,
     string? Category,
     string? StoreyId,
-    string? StoreyName);
+    string? StoreyName,
+    IReadOnlyDictionary<string, SceneProperty> Properties);
