@@ -31,4 +31,9 @@ public readonly record struct BoundingBox3(Vector3 Min, Vector3 Max)
         new(Vector3.Min(Min, other.Min), Vector3.Max(Max, other.Max));
 
     public BoundingBox3 Translate(Vector3 offset) => new(Min + offset, Max + offset);
+
+    public bool Intersects(BoundingBox3 other) =>
+        Min.X <= other.Max.X && Max.X >= other.Min.X &&
+        Min.Y <= other.Max.Y && Max.Y >= other.Min.Y &&
+        Min.Z <= other.Max.Z && Max.Z >= other.Min.Z;
 }
