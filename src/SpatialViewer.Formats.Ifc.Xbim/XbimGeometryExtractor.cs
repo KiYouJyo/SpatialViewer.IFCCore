@@ -182,17 +182,25 @@ internal static class XbimGeometryExtractor
             .Select(feature => feature.EntityLabel)
             .ToHashSet();
 
-        var selected = allInstances
+        var selected = new List<XbimShapeInstance>();
+        var productGroups = allInstances
             .Where(instance => !featureLabels.Contains(instance.IfcProductLabel))
-            .GroupBy(instance => instance.IfcProductLabel)
-            .SelectMany(group =>
+            .GroupBy(instance => instance.IfcProductLabel);
+
+        foreach (var group in productGroups)
+        {
+            var finalShapes = group
+                .Where(instance => instance.RepresentationType == XbimGeometryRepresentationType.OpeningsAndAdditionsIncluded)
+                .ToList();
+            if (finalShapes.Count > 0)
             {
-                var finalShapes = group
-                    .Where(instance => instance.RepresentationType == XbimGeometryRepresentationType.OpeningsAndAdditionsIncluded)
-                    .ToList();
-                return finalShapes.Count > 0 ? finalShapes : group;
-            })
-            .ToList();
+                selected.AddRange(finalShapes);
+            }
+            else
+            {
+                selected.AddRange(group);
+            }
+        }
 
         if (!preserveOpeningElements)
         {
