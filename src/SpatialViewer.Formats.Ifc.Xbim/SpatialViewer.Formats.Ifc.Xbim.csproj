@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\SpatialViewer.Formats.Ifc\SpatialViewer.Formats.Ifc.csproj" />
+    <PackageReference Include="Xbim.Essentials" Version="6.1.605" />
   </ItemGroup>
 </Project>

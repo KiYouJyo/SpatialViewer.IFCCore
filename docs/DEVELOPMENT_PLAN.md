@@ -4,22 +4,23 @@
 
 Build a stable BIM viewing kernel that can display Revit-origin building models through open IFC first, while keeping a clean path for optional direct-RVT adapters later.
 
-## Phase 0 — Repository foundation (0.1.x)
+## Phase 0 — Repository foundation (0.1.x) — Complete
 
 - Mirror CadCore repository conventions: .NET 10, `src/tests/docs/.github`, CI, policies and multilingual README.
 - Establish Core / IFC contract / xBIM adapter / rendering boundaries.
 - Define fixture metadata and compatibility matrix.
 - Acceptance: solution restores, builds Debug + Release, tests run on CI, no proprietary dependency in Core.
 
-## Phase 1 — IFC document loading (0.2.x)
+## Phase 1 — IFC document loading (0.2.x) — Implemented
 
-- Integrate current xBIM packages in `SpatialViewer.Formats.Ifc.Xbim` only.
+- `Xbim.Essentials` is pinned inside `SpatialViewer.Formats.Ifc.Xbim` only.
 - Load STEP and IFCZIP; detect IFC2x3 / IFC4 / IFC4.3.
-- Extract Project → Site → Building → Storey → Element hierarchy.
-- Preserve GlobalId, entity label, class, name, type and containment.
+- Extract Project → Site → Building → Storey → Element hierarchy from decomposition, nesting and spatial containment relations.
+- Preserve GlobalId, entity label, class, name, type and containment metadata.
 - Extract property sets, quantities, classifications and basic materials.
-- Add cancellation, progress and structured diagnostics.
-- Acceptance: representative Revit-exported fixtures open without UI code and semantic counts match expected metadata.
+- Provide cancellation checks, staged progress and structured diagnostics.
+- Automated fixtures validate schemas, IFCZIP, semantic hierarchy and common metadata without product UI code.
+- Ongoing hardening: expand the redistributable corpus with representative Revit-exported IFC fixtures and malformed-input cases.
 
 ## Phase 2 — Geometry pipeline (0.3.x)
 
@@ -64,4 +65,4 @@ Build a stable BIM viewing kernel that can display Revit-origin building models 
 
 ## Release gate
 
-A release is not considered complete only because a sample model opens. Each milestone must pass: schema compatibility, semantic correctness, geometry correctness, performance regression, malformed-input safety and license review.
+A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness once geometry exists, performance regression, malformed-input safety and license review.
