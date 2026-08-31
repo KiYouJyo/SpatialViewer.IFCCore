@@ -17,7 +17,7 @@ public sealed class IfcContractTests
             var reader = new XbimIfcModelReader();
             var result = await reader.OpenAsync(path);
 
-            Assert.Equal(expected, result.SchemaVersion);
+            Assert.Equal(expected, result.Schema);
             Assert.Equal(expected.ToString(), result.Document.Metadata["Schema"]);
         }
         finally
@@ -56,7 +56,9 @@ public sealed class IfcContractTests
             var reader = new XbimIfcModelReader();
             var result = await reader.OpenAsync(path, new IfcOpenOptions { IncludeGeometry = true });
 
-            Assert.Contains(result.Diagnostics, item => item.Code == "IFC_GEOMETRY_DEFERRED" && !item.IsError);
+            Assert.Contains(
+                result.Diagnostics,
+                item => item.Code == "IFC_GEOMETRY_DEFERRED" && item.Severity == IfcDiagnosticSeverity.Info);
         }
         finally
         {

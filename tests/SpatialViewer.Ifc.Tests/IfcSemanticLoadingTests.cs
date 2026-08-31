@@ -15,7 +15,7 @@ public sealed class IfcSemanticLoadingTests
             var reader = new XbimIfcModelReader();
             var result = await reader.OpenAsync(path);
 
-            Assert.Equal(IfcSchemaVersion.Ifc4, result.SchemaVersion);
+            Assert.Equal(IfcSchemaVersion.Ifc4, result.Schema);
             var project = Assert.Single(result.Document.Root.Children.Where(node => node.Category == "IfcProject"));
             var site = Assert.Single(project.Children.Where(node => node.Category == "IfcSite"));
             var building = Assert.Single(site.Children.Where(node => node.Category == "IfcBuilding"));
@@ -23,11 +23,15 @@ public sealed class IfcSemanticLoadingTests
             var wall = Assert.Single(storey.Children.Where(node => node.Category == "IfcWall"));
 
             Assert.Equal("Wall 01", wall.Name);
-            Assert.Contains(wall.Properties, property => IsProperty(property, "GlobalId", "3hW0Q0YqP0k8oT7M2h4abc"));
-            Assert.Contains(wall.Properties, property => IsProperty(property, "Reference", "W-01", "Pset_WallCommon"));
-            Assert.Contains(wall.Properties, property => IsProperty(property, "Length", "5", "BaseQuantities"));
-            Assert.Contains(wall.Properties, property => property.Group == "IFC.Material" && property.Value.Contains("Concrete", StringComparison.Ordinal));
-            Assert.Contains(wall.Properties, property => property.Group == "IFC.Classification" && property.Value.Contains("Walls", StringComparison.Ordinal));
+            Assert.Contains(wall.Properties.Values, property => IsProperty(property, "GlobalId", "3hW0Q0YqP0k8oT7M2h4abc"));
+            Assert.Contains(wall.Properties.Values, property => IsProperty(property, "Reference", "W-01", "Pset_WallCommon"));
+            Assert.Contains(wall.Properties.Values, property => IsProperty(property, "Length", "5", "BaseQuantities"));
+            Assert.Contains(
+                wall.Properties.Values,
+                property => property.Group == "IFC.Material" && property.Value?.Contains("Concrete", StringComparison.Ordinal) == true);
+            Assert.Contains(
+                wall.Properties.Values,
+                property => property.Group == "IFC.Classification" && property.Value?.Contains("Walls", StringComparison.Ordinal) == true);
         }
         finally
         {

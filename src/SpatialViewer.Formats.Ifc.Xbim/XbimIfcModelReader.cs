@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using SpatialViewer.Core;
@@ -11,6 +12,9 @@ namespace SpatialViewer.Formats.Ifc.Xbim;
 
 public sealed class XbimIfcModelReader : IIfcModelReader
 {
+    private static readonly string[] SelectDisplayProperties =
+        ["Name", "Identification", "ItemReference", "Location"];
+
     public ValueTask<IfcLoadResult> OpenAsync(
         string path,
         IfcOpenOptions? options = null,
@@ -34,6 +38,7 @@ public sealed class XbimIfcModelReader : IIfcModelReader
         IfcOpenOptions options,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
         cancellationToken.ThrowIfCancellationRequested();
         Report(options, IfcLoadStage.Opening, 0, "Opening IFC model");
 
@@ -52,22 +57,24 @@ public sealed class XbimIfcModelReader : IIfcModelReader
         if (schema == IfcSchemaVersion.Unknown)
         {
             diagnostics.Add(new IfcLoadDiagnostic(
+                IfcDiagnosticSeverity.Error,
                 "IFC_SCHEMA_UNKNOWN",
-                $"The xBIM schema '{model.SchemaVersion}' is not mapped by SpatialViewer.IFCCore.",
-                true));
+                $"The xBIM schema '{model.SchemaVersion}' is not mapped by SpatialViewer.IFCCore."));
         }
 
         if (options.IncludeGeometry)
         {
             diagnostics.Add(new IfcLoadDiagnostic(
+                IfcDiagnosticSeverity.Info,
                 "IFC_GEOMETRY_DEFERRED",
                 "Geometry extraction is scheduled for the 0.3.x geometry pipeline; 0.2.x loads semantic BIM data only."));
         }
 
         Report(options, IfcLoadStage.BuildingHierarchy, 0, "Building IFC spatial hierarchy");
         var document = BuildDocument(model, path, schema, options, diagnostics, cancellationToken);
+        stopwatch.Stop();
         Report(options, IfcLoadStage.Completed, 100, "IFC model loaded");
-        return new IfcLoadResult(document, schema, diagnostics);
+        return new IfcLoadResult(document, schema, diagnostics, stopwatch.Elapsed);
     }
 
     private static SceneDocument BuildDocument(
@@ -80,11 +87,17 @@ public sealed class XbimIfcModelReader : IIfcModelReader
     {
         var visited = new HashSet<int>();
         var projects = model.Instances.OfType<IIfcProject>().ToList();
-        var children = new List<SceneNode>(projects.Count + 1);
+        var fileName = Path.GetFileName(path);
+        var root = new SceneNode("ifc:root")
+        {
+            Name = fileName,
+            Category = "IFC",
+        };
 
         if (projects.Count == 0)
         {
             diagnostics.Add(new IfcLoadDiagnostic(
+                IfcDiagnosticSeverity.Warning,
                 "IFC_PROJECT_MISSING",
                 "No IfcProject was found. Uncontained occurrences are still exposed when possible."));
         }
@@ -92,7 +105,7 @@ public sealed class XbimIfcModelReader : IIfcModelReader
         for (var index = 0; index < projects.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            children.Add(BuildNode(projects[index], null, options, visited, cancellationToken));
+            root.Children.Add(BuildNode(projects[index], null, options, visited, cancellationToken));
             Report(
                 options,
                 IfcLoadStage.BuildingHierarchy,
@@ -107,46 +120,37 @@ public sealed class XbimIfcModelReader : IIfcModelReader
 
         if (uncontained.Count > 0)
         {
-            var orphanNodes = new List<SceneNode>(uncontained.Count);
+            var orphanGroup = new SceneNode("ifc:uncontained")
+            {
+                Name = "Uncontained",
+                Category = "IFC.Uncontained",
+            };
+            AddProperty(
+                orphanGroup,
+                new SceneProperty("Count", uncontained.Count.ToString(CultureInfo.InvariantCulture), null, "IFC"));
+
             foreach (var item in uncontained)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                orphanNodes.Add(BuildNode(item, null, options, visited, cancellationToken));
+                orphanGroup.Children.Add(BuildNode(item, null, options, visited, cancellationToken));
             }
 
-            children.Add(new SceneNode(
-                "ifc:uncontained",
-                "Uncontained",
-                "IFC.Uncontained",
-                null,
-                [new SceneProperty("Count", uncontained.Count.ToString(CultureInfo.InvariantCulture), null, "IFC")],
-                [],
-                orphanNodes));
-
+            root.Children.Add(orphanGroup);
             diagnostics.Add(new IfcLoadDiagnostic(
+                IfcDiagnosticSeverity.Warning,
                 "IFC_UNCONTAINED_OBJECTS",
                 $"{uncontained.Count.ToString(CultureInfo.InvariantCulture)} IFC object occurrences were not reached through the primary spatial hierarchy."));
         }
 
-        var fileName = Path.GetFileName(path);
-        var root = new SceneNode(
-            "ifc:root",
-            fileName,
-            "IFC",
-            null,
-            [],
-            [],
-            children);
-
-        var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+        var document = new SceneDocument(root)
         {
-            ["Format"] = "IFC",
-            ["Schema"] = schema.ToString(),
-            ["SourcePath"] = Path.GetFullPath(path),
-            ["EntityCount"] = model.Instances.Count.ToString(CultureInfo.InvariantCulture),
+            SourcePath = Path.GetFullPath(path),
         };
-
-        return new SceneDocument(fileName, root, SceneBounds.Empty, metadata);
+        document.Metadata["Format"] = "IFC";
+        document.Metadata["Schema"] = schema.ToString();
+        document.Metadata["SourcePath"] = document.SourcePath;
+        document.Metadata["EntityCount"] = model.Instances.Count.ToString(CultureInfo.InvariantCulture);
+        return document;
     }
 
     private static SceneNode BuildNode(
@@ -162,46 +166,54 @@ public sealed class XbimIfcModelReader : IIfcModelReader
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        var properties = ExtractProperties(definition, parent, options.IncludeProperties);
+        var category = definition.ExpressType.Name;
+        var name = GetText(definition.Name) ?? $"{category} #{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}";
+        var node = new SceneNode($"ifc:{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}")
+        {
+            SourceId = definition.GlobalId.ToString(),
+            Name = name,
+            Category = category,
+        };
+
+        foreach (var property in ExtractProperties(definition, parent, options.IncludeProperties))
+        {
+            AddProperty(node, property);
+        }
+
         var childDefinitions = GetChildDefinitions(definition)
             .Where(child => child.EntityLabel != definition.EntityLabel)
             .GroupBy(child => child.EntityLabel)
             .Select(group => group.First())
             .ToList();
 
-        var children = new List<SceneNode>(childDefinitions.Count);
         foreach (var child in childDefinitions)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            children.Add(visited.Contains(child.EntityLabel)
+            node.Children.Add(visited.Contains(child.EntityLabel)
                 ? CreateReferenceNode(child)
                 : BuildNode(child, definition, options, visited, cancellationToken));
         }
 
-        var category = definition.ExpressType.Name;
-        var name = GetText(definition.Name) ?? $"{category} #{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}";
-        return new SceneNode(
-            $"ifc:{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}",
-            name,
-            category,
-            definition.GlobalId.ToString(),
-            properties,
-            [],
-            children);
+        return node;
     }
 
     private static SceneNode CreateReferenceNode(IIfcObjectDefinition definition)
     {
         var category = definition.ExpressType.Name;
-        var name = GetText(definition.Name) ?? $"{category} #{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}";
-        return new SceneNode(
-            $"ifc-ref:{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}",
-            name,
-            $"{category}.Reference",
-            definition.GlobalId.ToString(),
-            [new SceneProperty("ReferenceTo", $"ifc:{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}", null, "IFC")],
-            [],
-            []);
+        var node = new SceneNode($"ifc-ref:{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}")
+        {
+            SourceId = definition.GlobalId.ToString(),
+            Name = GetText(definition.Name) ?? $"{category} #{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}",
+            Category = $"{category}.Reference",
+        };
+        AddProperty(
+            node,
+            new SceneProperty(
+                "ReferenceTo",
+                $"ifc:{definition.EntityLabel.ToString(CultureInfo.InvariantCulture)}",
+                null,
+                "IFC"));
+        return node;
     }
 
     private static IEnumerable<IIfcObjectDefinition> GetChildDefinitions(IIfcObjectDefinition definition)
@@ -234,7 +246,7 @@ public sealed class XbimIfcModelReader : IIfcModelReader
         }
     }
 
-    private static IReadOnlyList<SceneProperty> ExtractProperties(
+    private static List<SceneProperty> ExtractProperties(
         IIfcObjectDefinition definition,
         IIfcObjectDefinition? parent,
         bool includeProperties)
@@ -381,7 +393,7 @@ public sealed class XbimIfcModelReader : IIfcModelReader
             return null;
         }
 
-        foreach (var propertyName in new[] { "Name", "Identification", "ItemReference", "Location" })
+        foreach (var propertyName in SelectDisplayProperties)
         {
             var property = value.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
             if (property is null || !property.CanRead)
@@ -444,6 +456,21 @@ public sealed class XbimIfcModelReader : IIfcModelReader
         {
             result.Add(new SceneProperty(name, value, unit, group));
         }
+    }
+
+    private static void AddProperty(SceneNode node, SceneProperty property)
+    {
+        var group = string.IsNullOrWhiteSpace(property.Group) ? "Property" : property.Group;
+        var baseKey = $"{group}.{property.Name}";
+        var key = baseKey;
+        var suffix = 2;
+        while (node.Properties.ContainsKey(key))
+        {
+            key = $"{baseKey}#{suffix.ToString(CultureInfo.InvariantCulture)}";
+            suffix++;
+        }
+
+        node.Properties[key] = property;
     }
 
     private static IfcSchemaVersion MapSchema(XbimSchemaVersion schema) => schema switch
