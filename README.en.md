@@ -2,7 +2,7 @@
 
 [中文](README.md) | [日本語](README.ja.md)
 
-SpatialViewer.IFCCore is the BIM/IFC viewing kernel for SpatialViewer. It owns IFC parsing, BIM hierarchy and properties, real geometry tessellation, render-scene preparation, and the integration boundary for models originating from Revit. It intentionally contains no WinUI 3 product UI.
+SpatialViewer.IFCCore is the BIM/IFC viewing kernel for SpatialViewer. It owns IFC parsing, BIM hierarchy and properties, real geometry tessellation, renderer-neutral interaction semantics, and the integration boundary for models originating from Revit. It intentionally contains no WinUI 3 product UI.
 
 ## Scope
 
@@ -13,17 +13,18 @@ SpatialViewer.IFCCore is the BIM/IFC viewing kernel for SpatialViewer. It owns I
 - All xBIM/OpenCascade types remain isolated inside `SpatialViewer.Formats.Ifc.Xbim` and do not leak into Core or UI contracts.
 - `.rvt` is not reverse-engineered or parsed by the portable core. Revit-origin models enter through IFC, a Revit API exporter/sidecar, Autodesk Platform Services, or an optional licensed SDK adapter.
 
-## 0.3.0 capabilities
+## 0.4.0 capabilities
 
-- Real IFC STEP / IFCZIP opening and IFC2x3 / IFC4 / IFC4.3 schema detection.
-- Project → Site → Building → Storey → Element hierarchy and common BIM metadata.
-- Real xBIM/OpenCascade triangle geometry when `IncludeGeometry=true`.
-- Positions, normals, triangle indices and renderer-neutral style/material slots.
-- Metre normalization, original world bounds and automatic local-origin rebasing for large coordinates.
-- Shared `MeshData` for repeated/mapped geometry with independent instance transforms.
-- Mirrored/negative transform semantics through `FlipWinding`.
-- Opening/void boolean results for host geometry, with optional opening-element geometry.
-- Cancellation, staged progress, structured diagnostics and elapsed timing.
+- Retains the 0.2/0.3 IFC semantic, property and real triangle-geometry pipeline.
+- Builds `RenderScene` from an already loaded `SceneDocument` without reparsing IFC.
+- Stable object identity plus deterministic `uint PickId`; visibility-state changes do not renumber unaffected objects.
+- PickMap exposes object name, category, storey and `SceneProperty` snapshots for property selection.
+- Object/category/storey hide and object isolate filters.
+- Global, category and object opacity overrides plus renderer-neutral fallback material keys.
+- Section-box contract with coarse bounds culling while intersecting meshes remain available for precise backend/GPU clipping.
+- Per-object outline targets for object-ID/depth outlines and selection highlighting.
+- Instanced `RenderBatch` generation by shared mesh/material/opacity/winding state.
+- Platform-neutral `RenderCamera` with perspective/orthographic projection, orbit, pan, zoom and view/projection matrices.
 
 See [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md), [COMPATIBILITY.md](docs/COMPATIBILITY.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

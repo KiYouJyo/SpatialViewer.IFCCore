@@ -10,16 +10,22 @@
 | IFC4.3 | Supported for parsing | Infrastructure / newer exchange workflows; geometry corpus is still expanding |
 | Project → Site → Building → Storey → Element | Supported | Decomposition, nesting and spatial containment |
 | Psets / quantities / classifications / basic materials | Supported | Exposed as `SceneProperty` values |
-| Triangulated solid geometry | Supported in 0.3.0 | xBIM/OpenCascade → renderer-neutral triangle meshes |
-| Normals / triangle indices | Supported in 0.3.0 | Preserved in `MeshData` |
-| Repeated / mapped geometry | Supported in 0.3.0 | Shared mesh data with per-instance transforms |
-| Mirrored / negative transforms | Supported in 0.3.0 | `FlipWinding` is propagated to the renderer contract |
-| Surface-style slot | Supported in 0.3.0 | xBIM style label is preserved as a renderer-neutral material ID |
-| Openings / voids | Supported in 0.3.0 | Host boolean result by default; opening geometry is opt-in |
-| Metre normalization | Supported in 0.3.0 | Source length units are normalized before renderer upload |
-| Large-coordinate rebasing | Supported in 0.3.0 | Local scene origin plus preserved original world bounds |
+| Triangulated solid geometry | Supported | xBIM/OpenCascade → renderer-neutral triangle meshes |
+| Repeated / mapped geometry | Supported | Shared mesh data with per-instance transforms |
+| Mirrored / negative transforms | Supported | `FlipWinding` propagated to renderer contracts |
+| Openings / voids | Supported | Host boolean result by default; opening geometry is opt-in |
+| Metre normalization / large-coordinate rebasing | Supported | Local render origin plus preserved world bounds |
+| Stable object / Pick IDs | Supported in 0.4.0 | Deterministic identity for hit testing and property selection |
+| Object/category/storey hide | Supported in 0.4.0 | RenderScene view-state filtering; no IFC reparse |
+| Object isolate | Supported in 0.4.0 | RenderScene view-state filtering |
+| Transparency overrides | Supported in 0.4.0 | Global/category/object opacity resolution |
+| Material fallback | Supported in 0.4.0 | Renderer-neutral fallback material key by semantic category |
+| Section Box | Supported in 0.4.0 | Bounds culling + backend/GPU precise clipping contract |
+| Outline targets | Supported in 0.4.0 | Object-ID/depth outline and selection-highlight contract |
+| Instanced render batches | Supported in 0.4.0 | Shared Mesh/Material/Opacity/Winding state with per-object instances |
+| Perspective / orthographic camera | Supported in 0.4.0 | Orbit, pan, zoom, view/projection matrices |
 | Revit `.rvt` | Adapter only | No portable direct parser in Core |
 
-Compatibility is verified by behavior-focused fixtures, not by extension alone. The portable 0.3 geometry tests exercise the representation mechanisms used across BIM categories; representative Revit exports for walls, slabs, roofs, doors, windows, stairs, railings and MEP content remain part of the growing cross-exporter fidelity corpus.
+Compatibility is verified by behavior-focused fixtures, not by extension alone. Geometry tests exercise real xBIM/OpenCascade representation mechanisms; rendering tests independently verify stable picking, property lookup, visibility/isolation, transparency, fallback materials, section-box behavior, outline targets, batching and camera operations.
 
-Each distributable real-world fixture should record authoring application, export version, schema, units, expected element count, expected bounds and known geometry edge cases. Proprietary Revit source files are never required by the portable test suite.
+Representative Revit exports remain part of the growing cross-exporter fidelity corpus. Proprietary Revit source files are never required by the portable test suite.
