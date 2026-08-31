@@ -5,6 +5,7 @@ using SpatialViewer.Core.Geometry;
 using Xbim.Common.Geometry;
 using Xbim.Common.XbimExtensions;
 using Xbim.Ifc;
+using Xbim.Ifc4.Interfaces;
 using Xbim.ModelGeometry.Scene;
 
 namespace SpatialViewer.Formats.Ifc.Xbim;
@@ -52,16 +53,14 @@ internal static class XbimGeometryExtractor
 
         cancellationToken.ThrowIfCancellationRequested();
         using var reader = model.GeometryStore.BeginRead();
-        var finalInstances = reader.ShapeInstances
-            .Where(instance => instance.RepresentationType == XbimGeometryRepresentationType.OpeningsAndAdditionsIncluded)
-            .ToList();
-        var instances = finalInstances.Count > 0 ? finalInstances : reader.ShapeInstances.ToList();
+        var allInstances = reader.ShapeInstances.ToList();
+        var instances = SelectRenderInstances(model, allInstances, options.PreserveOpeningElements);
         if (instances.Count == 0)
         {
             diagnostics.Add(new IfcLoadDiagnostic(
                 IfcDiagnosticSeverity.Warning,
                 "IFC_GEOMETRY_EMPTY",
-                "The geometry store contains no shape instances."));
+                "The geometry store contains no renderable shape instances."));
             return;
         }
 
@@ -171,6 +170,48 @@ internal static class XbimGeometryExtractor
         document.Metadata["Geometry.TriangleCount"] = triangleCount.ToString(CultureInfo.InvariantCulture);
         document.Metadata["Geometry.WorldOrigin"] = FormatVector(origin);
         document.Root.Bounds = document.Bounds;
+    }
+
+    private static List<XbimShapeInstance> SelectRenderInstances(
+        IfcStore model,
+        List<XbimShapeInstance> allInstances,
+        bool preserveOpeningElements)
+    {
+        var featureLabels = model.Instances
+            .OfType<IIfcFeatureElement>()
+            .Select(feature => feature.EntityLabel)
+            .ToHashSet();
+
+        var selected = allInstances
+            .Where(instance => !featureLabels.Contains(instance.IfcProductLabel))
+            .GroupBy(instance => instance.IfcProductLabel)
+            .SelectMany(group =>
+            {
+                var finalShapes = group
+                    .Where(instance => instance.RepresentationType == XbimGeometryRepresentationType.OpeningsAndAdditionsIncluded)
+                    .ToList();
+                return finalShapes.Count > 0 ? finalShapes : group;
+            })
+            .ToList();
+
+        if (!preserveOpeningElements)
+        {
+            return selected;
+        }
+
+        var openingLabels = model.Instances
+            .OfType<IIfcOpeningElement>()
+            .Select(opening => opening.EntityLabel)
+            .ToHashSet();
+
+        return selected
+            .Concat(allInstances.Where(instance => openingLabels.Contains(instance.IfcProductLabel)))
+            .DistinctBy(instance => (
+                instance.IfcProductLabel,
+                instance.InstanceLabel,
+                instance.ShapeGeometryLabel,
+                instance.RepresentationType))
+            .ToList();
     }
 
     private static MeshData ReadMesh(XbimShapeGeometry shapeGeometry, double scale, int styleLabel)

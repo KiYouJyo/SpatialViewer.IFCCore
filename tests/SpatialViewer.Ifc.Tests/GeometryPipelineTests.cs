@@ -1,6 +1,6 @@
-using System.Globalization;
 using SpatialViewer.Core;
 using SpatialViewer.Formats.Ifc.Xbim;
+using SpatialViewer.Rendering;
 using Xunit;
 
 namespace SpatialViewer.Formats.Ifc.Tests;
@@ -35,6 +35,8 @@ public sealed class GeometryPipelineTests
             Assert.True(firstMesh.TriangleCount >= 12);
             Assert.NotNull(firstMesh.Normals);
             Assert.Equal(firstMesh.Positions.Count, firstMesh.Normals!.Count);
+            Assert.NotNull(firstMesh.MaterialId);
+            Assert.StartsWith("xbim-style:", firstMesh.MaterialId, StringComparison.Ordinal);
             Assert.InRange(firstMesh.Bounds.Size.X, 1.99f, 2.01f);
             Assert.InRange(firstMesh.Bounds.Size.Y, 0.99f, 1.01f);
             Assert.InRange(firstMesh.Bounds.Size.Z, 2.99f, 3.01f);
@@ -46,6 +48,77 @@ public sealed class GeometryPipelineTests
             Assert.InRange(result.Document.WorldBounds.Value.Max.X, 15.99f, 16.01f);
             Assert.Contains(progress.Events, item => item.Stage == IfcLoadStage.GeneratingGeometry);
             Assert.Contains(progress.Events, item => item.Stage == IfcLoadStage.ExtractingGeometry);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ReaderPreservesMappedMirrorWindingThroughRenderScene()
+    {
+        var path = IfcTestFile.WriteMappedMirroredIfc4();
+        try
+        {
+            var reader = new XbimIfcModelReader();
+            var result = await reader.OpenAsync(path, new IfcOpenOptions { IncludeGeometry = true });
+
+            Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Severity == IfcDiagnosticSeverity.Error);
+            var wall = Assert.Single(FindNodes(result.Document.Root, "IfcWall"));
+            var geometry = Assert.Single(wall.Children, node => node.Category == "IFC.Geometry");
+            Assert.True(geometry.FlipWinding);
+            Assert.True(geometry.Transform.GetDeterminant() < 0f);
+
+            var renderMesh = Assert.Single(RenderScene.FromDocument(result.Document).Meshes);
+            Assert.True(renderMesh.FlipWinding);
+            Assert.Equal(geometry.Bounds, renderMesh.Bounds);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ReaderCutsOpeningsWithoutRenderingFeatureElementsByDefault()
+    {
+        var path = IfcTestFile.WriteOpeningIfc4();
+        try
+        {
+            var reader = new XbimIfcModelReader();
+            var result = await reader.OpenAsync(path, new IfcOpenOptions { IncludeGeometry = true });
+
+            Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Severity == IfcDiagnosticSeverity.Error);
+            var wall = Assert.Single(FindNodes(result.Document.Root, "IfcWall"));
+            var wallGeometry = Assert.Single(wall.Children, node => node.Category == "IFC.Geometry");
+            var wallMesh = Assert.Single(wallGeometry.Meshes);
+            Assert.True(wallMesh.TriangleCount > 12);
+
+            var opening = Assert.Single(FindNodes(result.Document.Root, "IfcOpeningElement"));
+            Assert.DoesNotContain(opening.Children, node => node.Category == "IFC.Geometry");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ReaderCanPreserveOpeningElementGeometryOnRequest()
+    {
+        var path = IfcTestFile.WriteOpeningIfc4();
+        try
+        {
+            var reader = new XbimIfcModelReader();
+            var result = await reader.OpenAsync(
+                path,
+                new IfcOpenOptions { IncludeGeometry = true, PreserveOpeningElements = true });
+
+            Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Severity == IfcDiagnosticSeverity.Error);
+            var opening = Assert.Single(FindNodes(result.Document.Root, "IfcOpeningElement"));
+            var openingGeometry = Assert.Single(opening.Children, node => node.Category == "IFC.Geometry");
+            Assert.NotEmpty(openingGeometry.Meshes);
         }
         finally
         {
