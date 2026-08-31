@@ -6,5 +6,7 @@ public enum IfcLoadStage
     Parsing,
     BuildingHierarchy,
     ExtractingMetadata,
+    GeneratingGeometry,
+    ExtractingGeometry,
     Completed,
 }

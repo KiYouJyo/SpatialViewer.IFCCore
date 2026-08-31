@@ -62,16 +62,28 @@ public sealed class XbimIfcModelReader : IIfcModelReader
                 $"The xBIM schema '{model.SchemaVersion}' is not mapped by SpatialViewer.IFCCore."));
         }
 
-        if (options.IncludeGeometry)
-        {
-            diagnostics.Add(new IfcLoadDiagnostic(
-                IfcDiagnosticSeverity.Info,
-                "IFC_GEOMETRY_DEFERRED",
-                "Geometry extraction is scheduled for the 0.3.x geometry pipeline; 0.2.x loads semantic BIM data only."));
-        }
-
         Report(options, IfcLoadStage.BuildingHierarchy, 0, "Building IFC spatial hierarchy");
         var document = BuildDocument(model, path, schema, options, diagnostics, cancellationToken);
+
+        if (options.IncludeGeometry)
+        {
+            try
+            {
+                XbimGeometryExtractor.AttachGeometry(model, document, options, diagnostics, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                diagnostics.Add(new IfcLoadDiagnostic(
+                    IfcDiagnosticSeverity.Error,
+                    "IFC_GEOMETRY_GENERATION_FAILED",
+                    $"xBIM geometry generation failed: {exception.Message}"));
+            }
+        }
+
         stopwatch.Stop();
         Report(options, IfcLoadStage.Completed, 100, "IFC model loaded");
         return new IfcLoadResult(document, schema, diagnostics, stopwatch.Elapsed);

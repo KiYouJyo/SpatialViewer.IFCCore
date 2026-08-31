@@ -21,6 +21,10 @@ public sealed class SceneNode
 
     public Matrix4x4 Transform { get; init; } = Matrix4x4.Identity;
 
+    public bool FlipWinding { get; init; }
+
+    public BoundingBox3? Bounds { get; set; }
+
     public IList<SceneNode> Children { get; } = new List<SceneNode>();
 
     public IList<MeshData> Meshes { get; } = new List<MeshData>();

@@ -66,17 +66,15 @@ public sealed class IfcContractTests
     }
 
     [Fact]
-    public async Task ReaderReportsGeometryDeferralWithoutFailingSemanticLoad()
+    public async Task GeometryRemainsOptIn()
     {
-        var path = IfcTestFile.WriteHeaderOnly("IFC4");
+        var path = IfcTestFile.WriteSemanticIfc4();
         try
         {
             var reader = new XbimIfcModelReader();
-            var result = await reader.OpenAsync(path, new IfcOpenOptions { IncludeGeometry = true });
+            var result = await reader.OpenAsync(path);
 
-            Assert.Contains(
-                result.Diagnostics,
-                item => item.Code == "IFC_GEOMETRY_DEFERRED" && item.Severity == IfcDiagnosticSeverity.Info);
+            Assert.DoesNotContain(result.Document.Metadata.Keys, key => key.StartsWith("Geometry.", StringComparison.Ordinal));
         }
         finally
         {
