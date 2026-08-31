@@ -1,6 +1,8 @@
 using System.Numerics;
 using SpatialViewer.Core;
 using SpatialViewer.Core.Geometry;
+using SpatialViewer.Rendering;
+using Xunit;
 
 namespace SpatialViewer.Rendering.Tests;
 

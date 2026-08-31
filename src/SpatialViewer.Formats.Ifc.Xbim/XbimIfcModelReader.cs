@@ -1,3 +1,5 @@
+using SpatialViewer.Formats.Ifc;
+
 namespace SpatialViewer.Formats.Ifc.Xbim;
 
 public sealed class XbimIfcModelReader : IIfcModelReader

@@ -1,4 +1,5 @@
 using SpatialViewer.Core;
+using Xunit;
 
 namespace SpatialViewer.Core.Tests;
 

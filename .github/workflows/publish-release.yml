@@ -1,0 +1,27 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore SpatialViewer.IFCCore.sln
+      - run: dotnet build SpatialViewer.IFCCore.sln -c Release --no-restore
+      - run: dotnet test SpatialViewer.IFCCore.sln -c Release --no-build --verbosity normal
+      - run: dotnet pack src/SpatialViewer.Core/SpatialViewer.Core.csproj -c Release --no-build -o artifacts
+      - run: dotnet pack src/SpatialViewer.Formats.Ifc/SpatialViewer.Formats.Ifc.csproj -c Release --no-build -o artifacts
+      - run: dotnet pack src/SpatialViewer.Rendering/SpatialViewer.Rendering.csproj -c Release --no-build -o artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.nupkg

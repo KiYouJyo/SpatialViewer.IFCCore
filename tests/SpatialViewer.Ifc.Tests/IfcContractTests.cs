@@ -1,4 +1,6 @@
+using SpatialViewer.Formats.Ifc;
 using SpatialViewer.Formats.Ifc.Xbim;
+using Xunit;
 
 namespace SpatialViewer.Formats.Ifc.Tests;
 
@@ -9,8 +11,10 @@ public sealed class IfcContractTests
     {
         IIfcModelReader reader = new XbimIfcModelReader();
 
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(
-            async () => await reader.OpenAsync("sample.ifc"));
+        var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+        {
+            await reader.OpenAsync("sample.ifc");
+        });
 
         Assert.Contains("Phase 1", exception.Message, StringComparison.Ordinal);
     }
