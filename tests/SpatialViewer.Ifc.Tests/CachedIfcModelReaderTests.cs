@@ -8,6 +8,10 @@ namespace SpatialViewer.Ifc.Tests;
 
 public sealed class CachedIfcModelReaderTests
 {
+    private static readonly Vector3[] TrianglePositions = [Vector3.Zero, Vector3.UnitX, Vector3.UnitY];
+    private static readonly int[] TriangleIndices = [0, 1, 2];
+    private static readonly Vector3[] TriangleNormals = [Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ];
+
     [Fact]
     public async Task MemoryCacheReusesLoadedSceneUntilSourceChanges()
     {
@@ -192,10 +196,9 @@ public sealed class CachedIfcModelReaderTests
 
         private static IfcLoadResult CreateResult(string path)
         {
-            var positions = new[] { Vector3.Zero, Vector3.UnitX, Vector3.UnitY };
-            var mesh = new MeshData(positions, new[] { 0, 1, 2 })
+            var mesh = new MeshData(TrianglePositions, TriangleIndices)
             {
-                Normals = new[] { Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ },
+                Normals = TriangleNormals,
                 MaterialId = "fallback:test",
             };
             var bounds = new BoundingBox3(Vector3.Zero, Vector3.One);
