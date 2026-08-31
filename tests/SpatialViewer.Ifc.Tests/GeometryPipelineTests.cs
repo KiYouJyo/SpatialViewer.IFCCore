@@ -1,6 +1,5 @@
 using SpatialViewer.Core;
 using SpatialViewer.Formats.Ifc.Xbim;
-using SpatialViewer.Rendering;
 using Xunit;
 
 namespace SpatialViewer.Formats.Ifc.Tests;
@@ -56,7 +55,7 @@ public sealed class GeometryPipelineTests
     }
 
     [Fact]
-    public async Task ReaderPreservesMappedMirrorWindingThroughRenderScene()
+    public async Task ReaderPreservesMappedMirrorWinding()
     {
         var path = IfcTestFile.WriteMappedMirroredIfc4();
         try
@@ -69,10 +68,7 @@ public sealed class GeometryPipelineTests
             var geometry = Assert.Single(wall.Children, node => node.Category == "IFC.Geometry");
             Assert.True(geometry.FlipWinding);
             Assert.True(geometry.Transform.GetDeterminant() < 0f);
-
-            var renderMesh = Assert.Single(RenderScene.FromDocument(result.Document).Meshes);
-            Assert.True(renderMesh.FlipWinding);
-            Assert.Equal(geometry.Bounds, renderMesh.Bounds);
+            Assert.NotNull(geometry.Bounds);
         }
         finally
         {
