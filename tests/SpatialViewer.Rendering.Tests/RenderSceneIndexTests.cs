@@ -8,6 +8,9 @@ namespace SpatialViewer.Rendering.Tests;
 
 public sealed class RenderSceneIndexTests
 {
+    private static readonly Vector3[] TrianglePositions = [Vector3.Zero, Vector3.UnitX, Vector3.UnitY];
+    private static readonly int[] TriangleIndices = [0, 1, 2];
+
     [Fact]
     public void IndexRebuildsViewStateWithoutRetraversingDocument()
     {
@@ -64,9 +67,7 @@ public sealed class RenderSceneIndexTests
 
     private static SceneDocument CreateDocument()
     {
-        var sharedMesh = new MeshData(
-            new[] { Vector3.Zero, Vector3.UnitX, Vector3.UnitY },
-            new[] { 0, 1, 2 });
+        var sharedMesh = new MeshData(TrianglePositions, TriangleIndices);
         var root = new SceneNode("root") { Category = "IFC" };
         var storey = new SceneNode("storey")
         {
