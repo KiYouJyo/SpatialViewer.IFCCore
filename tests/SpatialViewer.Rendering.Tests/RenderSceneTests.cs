@@ -8,14 +8,15 @@ namespace SpatialViewer.Rendering.Tests;
 
 public sealed class RenderSceneTests
 {
+    private static readonly Vector3[] TrianglePositions = [Vector3.Zero, Vector3.UnitX, Vector3.UnitY];
+    private static readonly int[] TriangleIndices = [0, 1, 2];
+
     [Fact]
-    public void Scene_flattens_meshes_without_losing_node_identity()
+    public void SceneFlattensMeshesWithoutLosingNodeIdentity()
     {
         var root = new SceneNode("root");
         var wall = new SceneNode("wall-1");
-        wall.Meshes.Add(new MeshData(
-            new[] { Vector3.Zero, Vector3.UnitX, Vector3.UnitY },
-            new[] { 0, 1, 2 }));
+        wall.Meshes.Add(new MeshData(TrianglePositions, TriangleIndices));
         root.Children.Add(wall);
 
         var renderScene = RenderScene.FromDocument(new SceneDocument(root));

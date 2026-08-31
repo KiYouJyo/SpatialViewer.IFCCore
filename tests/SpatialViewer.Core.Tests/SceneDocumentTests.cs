@@ -6,7 +6,7 @@ namespace SpatialViewer.Core.Tests;
 public sealed class SceneDocumentTests
 {
     [Fact]
-    public void Document_preserves_root_and_children()
+    public void DocumentPreservesRootAndChildren()
     {
         var root = new SceneNode("project");
         root.Children.Add(new SceneNode("building"));

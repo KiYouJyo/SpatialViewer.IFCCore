@@ -2,7 +2,7 @@ namespace SpatialViewer.Rendering.Windows;
 
 public sealed class WindowsRenderBackend
 {
-    public string Name => "SpatialViewer Windows BIM Renderer";
+    public static string Name => "SpatialViewer Windows BIM Renderer";
 
     public bool IsInitialized { get; private set; }
 

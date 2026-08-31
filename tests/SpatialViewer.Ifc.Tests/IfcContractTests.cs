@@ -7,9 +7,9 @@ namespace SpatialViewer.Formats.Ifc.Tests;
 public sealed class IfcContractTests
 {
     [Fact]
-    public async Task Foundation_adapter_fails_explicitly_until_xbim_is_integrated()
+    public async Task FoundationAdapterFailsExplicitlyUntilXbimIsIntegrated()
     {
-        IIfcModelReader reader = new XbimIfcModelReader();
+        var reader = new XbimIfcModelReader();
 
         var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
         {
@@ -23,7 +23,7 @@ public sealed class IfcContractTests
     [InlineData(IfcSchemaVersion.Ifc2X3)]
     [InlineData(IfcSchemaVersion.Ifc4)]
     [InlineData(IfcSchemaVersion.Ifc4X3)]
-    public void Target_schema_values_are_explicit(IfcSchemaVersion schema)
+    public void TargetSchemaValuesAreExplicit(IfcSchemaVersion schema)
     {
         Assert.NotEqual(IfcSchemaVersion.Unknown, schema);
     }
