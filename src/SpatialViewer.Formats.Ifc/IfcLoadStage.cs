@@ -2,11 +2,14 @@ namespace SpatialViewer.Formats.Ifc;
 
 public enum IfcLoadStage
 {
-    Opening = 0,
+    CheckingCache = 0,
+    ReadingCache,
+    Opening,
     Parsing,
     BuildingHierarchy,
     ExtractingMetadata,
     GeneratingGeometry,
     ExtractingGeometry,
+    WritingCache,
     Completed,
 }

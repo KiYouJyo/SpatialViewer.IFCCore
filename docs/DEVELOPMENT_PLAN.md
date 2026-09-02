@@ -56,14 +56,24 @@ The geometry pipeline is representation-driven rather than category-specific: wa
 
 Interactive view state is downstream of IFC parsing. A loaded `SceneDocument` can be reused for camera navigation, selection, hide/isolate, transparency and section-box changes. 0.4 verifies the contracts and deterministic scene transformations; concrete Direct3D/WinUI drawing remains the responsibility of `SpatialViewer.Rendering.Windows` and the product UI.
 
-## Phase 4 — Performance and cache (0.5.x)
+## Phase 4 — Performance and cache (0.5.x) — Implemented
 
-- Background loading pipeline with cancellation and progress stages.
-- Deduplicate repeated meshes and introduce geometry/material caches beyond one load operation.
-- Define optional on-disk SpatialViewer BIM cache with source fingerprint and schema/version stamp.
-- Benchmark cold open, warm open, RenderScene rebuild, peak memory and GPU upload separately.
-- Add dependency/CI caching where it materially reduces the native geometry restore path.
-- Acceptance targets for reference models: deterministic output, bounded peak memory, cancellable load and materially faster warm-open/view-state rebuild paths.
+- Keep source parsing/geometry work background/cancellable and extend staged progress with cache check/read/write phases.
+- Add `CachedIfcModelReader` around the reader contract instead of embedding cache policy into xBIM-specific code.
+- Use a bounded in-memory LRU entry cache for exact `SceneDocument` and shared `MeshData` reuse across opens.
+- Add a versioned internal `.svbim` disk cache for renderer-neutral scene state with unique mesh-table deduplication.
+- Bind cache identity to SHA-256 source fingerprint, file length, cache-format version and geometry/property/opening/rebase option signature.
+- Recover from corrupt/unreadable/unwritable cache state by falling back to the source reader; write disk entries through temporary files and atomic replacement.
+- Add `RenderSceneIndex` so repeated visibility/appearance/section rebuilds filter pre-indexed render candidates rather than retraversing the BIM tree.
+- Measure cold/miss/memory-hit/disk-hit loading with elapsed time plus sampled managed-heap and process-working-set start/peak/end values.
+- Measure indexed RenderScene rebuild elapsed time and allocations separately from source loading.
+- Estimate GPU geometry upload by unique `MeshData` reference, keeping repeated instances separate from vertex/index upload size.
+- Cache NuGet/OpenCascade CI dependencies by dependency-graph inputs to reduce repeated native-package restore cost.
+- Validate disk warm-open behavior against the real xBIM/OpenCascade IFC4 geometry fixture: a new wrapped xBIM reader is not invoked on a valid `.svbim` hit.
+
+### 0.5 acceptance boundary
+
+0.5 establishes deterministic cache invalidation, warm-path bypass, bounded retained cache entries and reproducible performance measurement contracts. It does **not** claim a universal large-Revit-model latency or memory SLA yet: hard numeric thresholds require a redistributable real-world performance corpus across model sizes/exporters. `.svbim` is an internal versioned performance artifact rather than a public interchange or archival format.
 
 ## Phase 5 — Revit-source adapters (0.6.x+)
 
@@ -84,4 +94,4 @@ Interactive view state is downstream of IFC parsing. A loaded `SceneDocument` ca
 
 ## Release gate
 
-A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness, deterministic transforms/bounds, rendering-semantic determinism, performance regression when applicable, malformed-input safety and license review.
+A release is not considered complete only because a sample model opens. Each milestone must pass the checks relevant to its scope: schema compatibility, semantic correctness, geometry correctness, deterministic transforms/bounds, rendering-semantic determinism, cache invalidation/recovery, performance regression when applicable, malformed-input safety and license review.

@@ -5,9 +5,28 @@ All notable changes to SpatialViewer.IFCCore are documented here.
 ## [Unreleased]
 
 ### Planned
-- Performance/cache work for 0.5.x, including warm-view rebuild benchmarks and geometry/material caching beyond one load operation.
 - Expand the redistributable golden corpus with representative Revit-origin IFC exports and malformed-input cases.
 - Continue cross-exporter fidelity hardening for complex BReps, textures, linked/federated models and discipline-specific content.
+
+## [0.5.0] - 2026-08-31
+
+### Added
+- `CachedIfcModelReader` wrapper providing cross-load caching without coupling the xBIM adapter to cache policy.
+- Bounded in-memory LRU cache with exact `SceneDocument` / shared-`MeshData` reuse.
+- Versioned internal `.svbim` disk cache for renderer-neutral SceneDocument state, including a unique mesh table, transforms, bounds, world origin, properties, material slots and diagnostics.
+- SHA-256 source fingerprinting with file-change detection during hashing and cache identity that also includes file length, open-option signature and cache-format version.
+- Cache progress stages (`CheckingCache`, `ReadingCache`, `WritingCache`) and structured hit/miss/read/write diagnostics.
+- Atomic disk-cache writes with corrupt/unreadable/unwritable-cache fallback to normal IFC loading.
+- `RenderSceneIndex` for pre-indexing stable render candidates once and rebuilding visibility/appearance/section state without retraversing `SceneDocument`.
+- `IfcLoadBenchmark` for elapsed time plus sampled managed-heap / process-working-set start, peak and end values with cache-disposition classification.
+- `RenderPerformanceMetrics` for indexed RenderScene rebuild elapsed/allocation metrics and unique-mesh GPU geometry-upload estimates.
+- Real xBIM/OpenCascade integration test proving a cold geometry load can write `.svbim` and a new reader instance can subsequently hit disk cache without invoking xBIM geometry again.
+- CI NuGet/OpenCascade package caching keyed from project dependency inputs.
+
+### Changed
+- Repository version advanced to 0.5.0.
+- Cold cached-reader progress now suppresses the wrapped reader's intermediate `Completed` event so cache writing precedes one final completion event.
+- Warm cache restores preserve shared mesh topology instead of duplicating repeated geometry by instance.
 
 ## [0.4.0] - 2026-08-31
 
